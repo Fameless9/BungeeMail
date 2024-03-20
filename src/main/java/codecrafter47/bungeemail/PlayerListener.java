@@ -11,14 +11,13 @@ import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.event.EventPriority;
 
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 public class PlayerListener implements Listener {
 
-    private BungeeMail plugin;
+    private final BungeeMail plugin;
     private final TabCompleteCache tabCompleteCache;
 
     public PlayerListener(BungeeMail plugin, TabCompleteCache tabCompleteCache) {
@@ -31,14 +30,11 @@ public class PlayerListener implements Listener {
         if (!event.isCancelled()) {
             final UUID uniqueId = event.getConnection().getUniqueId();
             final String name = event.getConnection().getName();
-            ProxyServer.getInstance().getScheduler().runAsync(plugin, new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        plugin.getStorage().updateUserEntry(uniqueId, name);
-                    } catch (StorageException e) {
-                        plugin.getLogger().log(Level.SEVERE, "Unable to update a players uuid in the cache", e);
-                    }
+            ProxyServer.getInstance().getScheduler().runAsync(plugin, () -> {
+                try {
+                    plugin.getStorage().updateUserEntry(uniqueId, name);
+                } catch (StorageException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Unable to update a players uuid in the cache", e);
                 }
             });
         }
@@ -61,18 +57,15 @@ public class PlayerListener implements Listener {
     }
 
     private void showNewMailInfo(final ProxiedPlayer player) {
-        plugin.getProxy().getScheduler().schedule(plugin, new Runnable() {
-            @Override
-            public void run() {
-                if (plugin.config.getBoolean("showMailsOnLogin")) {
-                    try {
-                        plugin.listMessages(player, 1, false, false);
-                    } catch (StorageException e) {
-                        plugin.getLogger().log(Level.SEVERE, "Failed to show mails to player", e);
-                    }
-                } else {
-                    plugin.showLoginInfo(player);
+        plugin.getProxy().getScheduler().schedule(plugin, () -> {
+            if (plugin.config.getBoolean("showMailsOnLogin")) {
+                try {
+                    plugin.listMessages(player, 1, false, false);
+                } catch (StorageException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to show mails to player", e);
                 }
+            } else {
+                plugin.showLoginInfo(player);
             }
         }, 1, TimeUnit.SECONDS);
     }
@@ -130,7 +123,7 @@ public class PlayerListener implements Listener {
                         || (args.length == 2 && event.getSuggestions().isEmpty())) {
                     if (player.hasPermission(Permissions.COMMAND_SEND) && tabCompleteCache != null) {
                         event.getSuggestions().addAll(tabCompleteCache.getSuggestions(prefix));
-                        Collections.sort(event.getSuggestions(), CaseInsensitiveComparator.INSTANCE);
+                        event.getSuggestions().sort(CaseInsensitiveComparator.INSTANCE);
                     }
                 }
             }

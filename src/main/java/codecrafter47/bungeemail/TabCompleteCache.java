@@ -3,7 +3,10 @@ package codecrafter47.bungeemail;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Plugin;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -21,19 +24,16 @@ public class TabCompleteCache {
     }
 
     private void updateCache(final int wait) {
-        plugin.getProxy().getScheduler().schedule(plugin, new Runnable() {
-            @Override
-            public void run() {
-                ArrayList<String> usernames = null;
-                try {
-                    usernames = new ArrayList<>(backend.getKnownUsernames());
-                } catch (StorageException e) {
-                    plugin.getLogger().log(Level.WARNING, "Failed to get tab completion data", e);
-                    return;
-                }
-                Collections.sort(usernames, CaseInsensitiveComparator.INSTANCE);
-                sortedNames = usernames;
+        plugin.getProxy().getScheduler().schedule(plugin, () -> {
+            ArrayList<String> usernames;
+            try {
+                usernames = new ArrayList<>(backend.getKnownUsernames());
+            } catch (StorageException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to get tab completion data", e);
+                return;
             }
+            usernames.sort(CaseInsensitiveComparator.INSTANCE);
+            sortedNames = usernames;
         }, wait, TimeUnit.MINUTES);
     }
 

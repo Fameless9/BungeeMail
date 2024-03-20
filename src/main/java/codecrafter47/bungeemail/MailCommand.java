@@ -14,7 +14,7 @@ import java.util.logging.Level;
 
 public class MailCommand extends Command {
 
-    private BungeeMail plugin;
+    private final BungeeMail plugin;
 
     public MailCommand(String name, String permission, BungeeMail plugin) {
         super(name, permission);
@@ -30,11 +30,11 @@ public class MailCommand extends Command {
         switch (args[0].toLowerCase()) {
             case "view":
             case "list":
-            case "read":
+            case "read": {
                 int start = 1;
                 if (args.length >= 2) {
                     try {
-                        start = Integer.valueOf(args[1]);
+                        start = Integer.parseInt(args[1]);
                     } catch (NumberFormatException e) {
                         commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.wrongSyntaxList));
                         return;
@@ -46,12 +46,13 @@ public class MailCommand extends Command {
                     plugin.getLogger().log(Level.SEVERE, "Failed to show mails to player", e);
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.commandError.replace("%error%", e.getMessage())));
                 }
-                return;
-            case "listall":
-                start = 1;
+                break;
+            }
+            case "listall": {
+                int start = 1;
                 if (args.length >= 2) {
                     try {
-                        start = Integer.valueOf(args[1]);
+                        start = Integer.parseInt(args[1]);
                     } catch (NumberFormatException e) {
                         commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.wrongSyntaxListall));
                         return;
@@ -63,19 +64,21 @@ public class MailCommand extends Command {
                     plugin.getLogger().log(Level.SEVERE, "Failed to show mails to player", e);
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.commandError.replace("%error%", e.getMessage())));
                 }
-                return;
-            case "sendall":
+                break;
+            }
+            case "sendall": {
                 if (!commandSender.hasPermission(Permissions.COMMAND_SENDALL)) {
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.noPermission));
                     return;
                 }
-                String text = "";
+                StringBuilder text = new StringBuilder();
                 for (int i = 1; i < args.length; i++) {
-                    text += args[i] + " ";
+                    text.append(args[i]).append(" ");
                 }
-                plugin.sendMailToAll(commandSender, text);
-                return;
-            case "reload":
+                plugin.sendMailToAll(commandSender, text.toString());
+                break;
+            }
+            case "reload": {
                 if (!commandSender.hasPermission(Permissions.COMMAND_ADMIN)) {
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.noPermission));
                     return;
@@ -88,12 +91,13 @@ public class MailCommand extends Command {
                     }
                 }
                 if (config_options_reload.isEmpty()) {
-                    commandSender.sendMessage(ChatUtil.parseBBCode("&aBungeeMail: &fReload Successfull"));
+                    commandSender.sendMessage(ChatUtil.parseBBCode("&aBungeeMail: &fReload Successful"));
                 } else {
                     commandSender.sendMessage(ChatUtil.parseBBCode("&aBungeeMail: &fA restart is required for your changes to the following options to take effect: " + Joiner.on(", ").join(config_options_reload)));
                 }
-                return;
-            case "send":
+                break;
+            }
+            case "send": {
                 if (!commandSender.hasPermission(Permissions.COMMAND_SEND)) {
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.noPermission));
                     return;
@@ -103,16 +107,18 @@ public class MailCommand extends Command {
                     return;
                 }
                 String target = args[1];
-                text = "";
+                StringBuilder text = new StringBuilder();
                 for (int i = 2; i < args.length; i++) {
-                    text += args[i] + " ";
+                    text.append(args[i]).append(" ");
                 }
-                plugin.sendMail(commandSender, target, text);
-                return;
-            case "help":
+                plugin.sendMail(commandSender, target, text.toString());
+                break;
+            }
+            case "help": {
                 commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.help));
-                return;
-            case "del":
+                break;
+            }
+            case "del": {
                 if (args.length < 2) {
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.wrongSyntaxDelete));
                     return;
@@ -138,7 +144,7 @@ public class MailCommand extends Command {
                     }
                 } else {
                     try {
-                        long id = Long.valueOf(args[1]);
+                        long id = Long.parseLong(args[1]);
                         plugin.getStorage().delete(id, senderUUID);
                         commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.deletedSingle));
                     } catch (NumberFormatException e) {
@@ -148,19 +154,21 @@ public class MailCommand extends Command {
                         commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.commandError.replace("%error%", e.getMessage())));
                     }
                 }
-                return;
-            default:
+                break;
+            }
+            default: {
                 if (!commandSender.hasPermission(Permissions.COMMAND_SEND)) {
                     commandSender.sendMessage(ChatUtil.parseBBCode(plugin.messages.help));
                     return;
                 }
                 // send mail
-                target = args[0];
-                text = "";
+                String target = args[0];
+                StringBuilder text = new StringBuilder();
                 for (int i = 1; i < args.length; i++) {
-                    text += args[i] + " ";
+                    text.append(args[i]).append(" ");
                 }
-                plugin.sendMail(commandSender, target, text);
+                plugin.sendMail(commandSender, target, text.toString());
+            }
         }
     }
 

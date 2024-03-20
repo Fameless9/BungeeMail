@@ -68,12 +68,7 @@ public class BungeeMail extends Plugin {
                 return;
             }
             // schedule saving
-            getProxy().getScheduler().schedule(this, new Runnable() {
-                @Override
-                public void run() {
-                    fileBackend.saveData();
-                }
-            }, 2, 2, TimeUnit.MINUTES);
+            getProxy().getScheduler().schedule(this, fileBackend::saveData, 2, 2, TimeUnit.MINUTES);
             storage = fileBackend;
         } else {
             storage = new MySQLBackend(this);
@@ -83,7 +78,7 @@ public class BungeeMail extends Plugin {
         instance = this;
 
         // Start metrics
-        Metrics metrics = new Metrics(this);
+        new Metrics(this, 4570);
 
         TabCompleteCache tabCompleteCache = null;
         if (config.getBoolean("enable_tab_complete")) {
@@ -94,14 +89,11 @@ public class BungeeMail extends Plugin {
         getProxy().getPluginManager().registerListener(this, new PlayerListener(this, tabCompleteCache));
 
         if (config.getBoolean("cleanup_enabled", false)) {
-            getProxy().getScheduler().schedule(this, new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        storage.deleteOlder(System.currentTimeMillis() - (60L * 60L * 24L * config.getLong("cleanup_threshold", 7L)), false);
-                    } catch (StorageException e) {
-                        getLogger().log(Level.WARNING, "Automatic database cleanup failed", e);
-                    }
+            getProxy().getScheduler().schedule(this, () -> {
+                try {
+                    storage.deleteOlder(System.currentTimeMillis() - config.getLong("cleanup_threshold", 7L) * 86400000L, false);
+                } catch (StorageException e) {
+                    getLogger().log(Level.WARNING, "Automatic database cleanup failed", e);
                 }
             }, 1, 120, TimeUnit.MINUTES);
         }
@@ -147,8 +139,7 @@ public class BungeeMail extends Plugin {
         int i = 1;
         int end = start + 9;
         if (end >= messages.size()) end = messages.size();
-        List<BaseComponent> output = new ArrayList<>();
-        output.addAll(Arrays.asList(ChatUtil.parseBBCode(headerTemplate.
+        List<BaseComponent> output = new ArrayList<>(Arrays.asList(ChatUtil.parseBBCode(headerTemplate.
                 replace("%start%", "" + start).replace("%end%", "" + end).
                 replace("%max%", "" + messages.size()).replace("%list%", listReadMessages ? "listall" : "list").
                 replace("%next%", "" + (end + 1)).replace("%visible%", messages.size() > 10 ? "" + 10 : ("" + messages.size())))));

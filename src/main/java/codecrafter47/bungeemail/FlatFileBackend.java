@@ -2,12 +2,12 @@ package codecrafter47.bungeemail;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -16,14 +16,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class FlatFileBackend implements IStorageBackend {
-    private Logger logger;
-    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private File saveFile;
-    private File tmpSaveFile;
+    private final Logger logger;
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final File saveFile;
+    private final File tmpSaveFile;
     private Data data;
-    private ReadWriteLock mailLock = new ReentrantReadWriteLock();
-    private ReadWriteLock uuidLock = new ReentrantReadWriteLock();
-    private ReadWriteLock fileLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock mailLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock uuidLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock fileLock = new ReentrantReadWriteLock();
     private boolean saveRequested = false;
 
     public FlatFileBackend(BungeeMail plugin) {
@@ -67,10 +67,8 @@ public class FlatFileBackend implements IStorageBackend {
 
     /**
      * Attempts to save the mail data to a file
-     *
-     * @return true on success, false otherwise
      */
-    public boolean saveData() {
+    public void saveData() {
         if (saveRequested) {
             saveRequested = false;
             mailLock.readLock().lock();
@@ -78,26 +76,24 @@ public class FlatFileBackend implements IStorageBackend {
             fileLock.writeLock().lock();
             try {
                 if (tmpSaveFile.exists()) {
-                    if (!tmpSaveFile.delete()) return false;
+                    if (!tmpSaveFile.delete()) return;
                 }
-                if (!tmpSaveFile.createNewFile()) return false;
-                Writer writer = new OutputStreamWriter(new FileOutputStream(tmpSaveFile), Charsets.UTF_8);
+                if (!tmpSaveFile.createNewFile()) return;
+                Writer writer = new OutputStreamWriter(Files.newOutputStream(tmpSaveFile.toPath()), Charsets.UTF_8);
                 gson.toJson(data, writer);
                 writer.close();
                 if (saveFile.exists()) {
-                    if (!saveFile.delete()) return false;
+                    if (!saveFile.delete()) return;
                 }
-                return tmpSaveFile.renameTo(saveFile);
+                tmpSaveFile.renameTo(saveFile);
             } catch (IOException ex) {
                 logger.log(Level.WARNING, "Failed to save file to disk", ex);
-                return false;
             } finally {
                 fileLock.writeLock().unlock();
                 uuidLock.readLock().unlock();
                 mailLock.readLock().unlock();
             }
         }
-        return true;
     }
 
     /**
@@ -108,7 +104,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public List<Message> getMessagesFor(UUID uuid, boolean onlyNew) throws StorageException {
+    public List<Message> getMessagesFor(UUID uuid, boolean onlyNew) {
         mailLock.readLock().lock();
         try {
             ArrayList<Message> messages = new ArrayList<>();
@@ -122,7 +118,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public Message saveMessage(String senderName, UUID senderUUID, UUID recipient, String message, boolean read, long time) throws StorageException {
+    public Message saveMessage(String senderName, UUID senderUUID, UUID recipient, String message, boolean read, long time) {
         mailLock.writeLock().lock();
         try {
             FlatFileMessage mail = new FlatFileMessage(time, read, message, recipient, senderUUID, senderName);
@@ -135,7 +131,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public int saveMessageToAll(String senderName, UUID senderUUID, String message, boolean read, long time) throws StorageException {
+    public int saveMessageToAll(String senderName, UUID senderUUID, String message, boolean read, long time) {
         Collection<UUID> targets = getAllKnownUUIDs();
         mailLock.writeLock().lock();
         try {
@@ -151,7 +147,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public void markRead(Message message) throws StorageException {
+    public void markRead(Message message) {
         Preconditions.checkArgument(message instanceof FlatFileMessage);
         mailLock.writeLock().lock();
         try {
@@ -163,7 +159,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public void delete(Message message) throws StorageException {
+    public void delete(Message message) {
         Preconditions.checkArgument(message instanceof FlatFileMessage);
         mailLock.writeLock().lock();
         try {
@@ -175,7 +171,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public boolean delete(long id, UUID recipient) throws StorageException {
+    public boolean delete(long id, UUID recipient) {
         boolean deleted = false;
         mailLock.writeLock().lock();
         try {
@@ -195,15 +191,10 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public void deleteOlder(long time, boolean deleteUnread) throws StorageException {
+    public void deleteOlder(long time, boolean deleteUnread) {
         mailLock.writeLock().lock();
         try {
-            for (Iterator<FlatFileMessage> iterator = data.data.iterator(); iterator.hasNext(); ) {
-                Message message = iterator.next();
-                if (message.getTime() < time && (deleteUnread || message.isRead())) {
-                    iterator.remove();
-                }
-            }
+            data.data.removeIf(message -> message.getTime() < time && (deleteUnread || message.isRead()));
             requestSave();
         } finally {
             mailLock.writeLock().unlock();
@@ -211,7 +202,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public UUID getUUIDForName(String name) throws StorageException {
+    public UUID getUUIDForName(String name) {
         if ("Console".equals(name)) {
             return BungeeMail.CONSOLE_UUID;
         }
@@ -233,7 +224,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public Collection<UUID> getAllKnownUUIDs() throws StorageException {
+    public Collection<UUID> getAllKnownUUIDs() {
         uuidLock.readLock().lock();
         try {
             return ImmutableSet.copyOf(data.uuidMap.values());
@@ -243,7 +234,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public Collection<String> getKnownUsernames() throws StorageException {
+    public Collection<String> getKnownUsernames() {
         uuidLock.readLock().lock();
         try {
             return ImmutableSet.copyOf(data.uuidMap.keySet());
@@ -253,7 +244,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     @Override
-    public void updateUserEntry(UUID uuid, String username) throws StorageException {
+    public void updateUserEntry(UUID uuid, String username) {
         uuidLock.writeLock().lock();
         try {
             data.uuidMap.put(username, uuid);
@@ -272,7 +263,7 @@ public class FlatFileBackend implements IStorageBackend {
         private long time;
         private transient final long id;
 
-        private static AtomicLong idSupplier = new AtomicLong(1);
+        private static final AtomicLong idSupplier = new AtomicLong(1);
 
         public FlatFileMessage(long time, boolean read, String message, UUID recipient, UUID senderUUID, String senderName) {
             this();
@@ -339,7 +330,7 @@ public class FlatFileBackend implements IStorageBackend {
     }
 
     private static class Data {
-        private List<FlatFileMessage> data = new ArrayList<>();
-        private Map<String, UUID> uuidMap = new HashMap<>();
+        private final List<FlatFileMessage> data = new ArrayList<>();
+        private final Map<String, UUID> uuidMap = new HashMap<>();
     }
 }

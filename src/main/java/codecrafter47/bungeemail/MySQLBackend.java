@@ -2,12 +2,10 @@ package codecrafter47.bungeemail;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.dbcp2.*;
-import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.sql.Statement;
 import java.util.*;
 
 public class MySQLBackend implements IStorageBackend {
@@ -109,8 +107,7 @@ public class MySQLBackend implements IStorageBackend {
                 ps.setString(3, message);
                 ps.setBoolean(4, read);
                 ps.setLong(5, time);
-                int affectedRows = ps.executeUpdate();
-                return affectedRows;
+                return ps.executeUpdate();
             }
         } catch (SQLException e) {
             throw new StorageException(e);
