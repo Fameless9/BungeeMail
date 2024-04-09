@@ -91,7 +91,7 @@ public class BungeeMail extends Plugin {
         if (config.getBoolean("cleanup_enabled", false)) {
             getProxy().getScheduler().schedule(this, () -> {
                 try {
-                    storage.deleteOlder(System.currentTimeMillis() - config.getLong("cleanup_threshold", 7L) * 86400000L, false);
+                    storage.deleteOlder(System.currentTimeMillis() - (1000L * 60L * 60L * 24L * config.getLong("cleanup_threshold", 7L)), false);
                 } catch (StorageException e) {
                     getLogger().log(Level.WARNING, "Automatic database cleanup failed", e);
                 }
